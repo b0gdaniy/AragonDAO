@@ -14,16 +14,16 @@ describe("AragonDAO", function () {
   let vote
   let proposalId
 
-  let amountToTransfer
+  let fiftyTokens
 
   beforeEach(async () => {
     [executor, proposer, user1, user2, user3, user4, user5] = await ethers.getSigners()
 
-    const hundredTokens = ethers.utils.parseEther("1000");
-    amountToTransfer = ethers.utils.parseEther("50");
+    const thousandTokens = ethers.utils.parseEther("1000");
+    fiftyTokens = ethers.utils.parseEther("50");
 
     const Token = await ethers.getContractFactory("AragonERC20Token", executor)
-    token = await Token.deploy(hundredTokens)
+    token = await Token.deploy(thousandTokens)
     await token.deployed()
 
     // const Token = await ethers.getContractFactory("AragonToken", executor)
@@ -44,11 +44,11 @@ describe("AragonDAO", function () {
     //   }
     // }
 
-    await token.transfer(user1.address, amountToTransfer)
-    await token.transfer(user2.address, amountToTransfer)
-    await token.transfer(user3.address, amountToTransfer)
-    await token.transfer(user4.address, amountToTransfer)
-    await token.transfer(user5.address, amountToTransfer)
+    await token.transfer(user1.address, fiftyTokens)
+    await token.transfer(user2.address, fiftyTokens)
+    await token.transfer(user3.address, fiftyTokens)
+    await token.transfer(user4.address, fiftyTokens)
+    await token.transfer(user5.address, fiftyTokens)
 
     const Governance = await ethers.getContractFactory("AragonDAO", executor)
     governance = await Governance.deploy(token.address, 1, 5, 4)
@@ -78,11 +78,7 @@ describe("AragonDAO", function () {
     const event = proposeReceipt.events.find(event => event.event === "ProposalCreated");
     [proposalId] = event.args;
 
-    await governance.quorum((await ethers.provider.getBlockNumber()) - 1)
-
     hash = ethers.utils.id("Call function from Contract")
-
-    await ethers.provider.send('evm_mine', []);
   })
 
   it("deployed", async () => {
@@ -104,8 +100,35 @@ describe("AragonDAO", function () {
   })
 
   it("voting correct", async () => {
+    await ethers.provider.send('evm_mine', [])
     // 0 = Against, 1 = For, 2 = Abstain
     vote = await governance.connect(user1).castVote(proposalId, 1)
+    vote = await governance.connect(user2).castVote(proposalId, 2)
+    vote = await governance.connect(user3).castVote(proposalId, 1)
+    vote = await governance.connect(user4).castVote(proposalId, 1)
+    vote = await governance.connect(user5).castVote(proposalId, 0)
+
+    expect(await governance.hasVotedOn(proposalId, user1.address)).to.eq(1)
+    expect(await governance.hasVotedOn(proposalId, user2.address)).to.eq(2)
+    expect(await governance.hasVotedOn(proposalId, user3.address)).to.eq(1)
+    expect(await governance.hasVotedOn(proposalId, user4.address)).to.eq(1)
+    expect(await governance.hasVotedOn(proposalId, user5.address)).to.eq(0)
+
+    // created for moves forward one block after the voting
+    const transfer = await token.transfer(proposer.address, 80)
+    await transfer.wait()
+
+    const { againstVotes, forVotes, abstainVotes } = await governance.proposalVotes(proposalId)
+
+    expect(againstVotes.toString()).to.eq(fiftyTokens)
+    expect(forVotes.toString()).to.eq(fiftyTokens.mul(3))
+    expect(abstainVotes.toString()).to.eq(fiftyTokens)
+  })
+
+  it("voting weight correct", async () => {
+    (await token.transfer(user1.address, fiftyTokens)).wait()
+    // 0 = Against, 1 = For, 2 = Abstain
+    vote = await governance.connect(user1).castVote(proposalId, 0)
     vote = await governance.connect(user2).castVote(proposalId, 2)
     vote = await governance.connect(user3).castVote(proposalId, 1)
     vote = await governance.connect(user4).castVote(proposalId, 1)
@@ -117,12 +140,13 @@ describe("AragonDAO", function () {
 
     const { againstVotes, forVotes, abstainVotes } = await governance.proposalVotes(proposalId)
 
-    expect(againstVotes.toString()).to.eq(amountToTransfer)
-    expect(forVotes.toString()).to.eq(amountToTransfer.mul(3))
-    expect(abstainVotes.toString()).to.eq(amountToTransfer)
+    expect(againstVotes.toString()).to.eq(fiftyTokens.mul(3))
+    expect(forVotes.toString()).to.eq(fiftyTokens.mul(2))
+    expect(abstainVotes.toString()).to.eq(fiftyTokens)
   })
 
   it("executed", async () => {
+    await ethers.provider.send('evm_mine', [])
     vote = await governance.connect(user1).castVote(proposalId, 0)
     vote = await governance.connect(user2).castVote(proposalId, 2)
     vote = await governance.connect(user3).castVote(proposalId, 1)
@@ -161,23 +185,23 @@ describe("Override vote", function () {
   let vote
   let proposalId
 
-  let amountToTransfer
+  let fiftyTokens
 
   beforeEach(async () => {
     [executor, proposer, user1, user2, user3, user4, user5] = await ethers.getSigners()
 
-    const hundredTokens = ethers.utils.parseEther("1000");
-    amountToTransfer = ethers.utils.parseEther("50");
+    const thousandTokens = ethers.utils.parseEther("1000");
+    fiftyTokens = ethers.utils.parseEther("50");
 
     const Token = await ethers.getContractFactory("AragonERC20Token", executor)
-    token = await Token.deploy(hundredTokens)
+    token = await Token.deploy(thousandTokens)
     await token.deployed()
 
-    await token.transfer(user1.address, amountToTransfer)
-    await token.transfer(user2.address, amountToTransfer)
-    await token.transfer(user3.address, amountToTransfer)
-    await token.transfer(user4.address, amountToTransfer)
-    await token.transfer(user5.address, amountToTransfer)
+    await token.transfer(user1.address, fiftyTokens)
+    await token.transfer(user2.address, fiftyTokens)
+    await token.transfer(user3.address, fiftyTokens)
+    await token.transfer(user4.address, fiftyTokens)
+    await token.transfer(user5.address, fiftyTokens)
 
     const Governance = await ethers.getContractFactory("AragonDAO", executor)
     governance = await Governance.deploy(token.address, 1, 5, 4)
@@ -210,23 +234,20 @@ describe("Override vote", function () {
     await governance.quorum((await ethers.provider.getBlockNumber()) - 1)
 
     hash = ethers.utils.id("Call function from Contract")
-
-    await ethers.provider.send('evm_mine', []);
   })
 
   it("overriding votes correct", async () => {
+    const tx = await token.transfer(user2.address, fiftyTokens)
+    await tx.wait()
+
     // 0 = Against, 1 = For, 2 = Abstain
-    console.log(await governance.state(proposalId))
-    vote = await governance.connect(user1).castVote(proposalId, 1)
-    console.log(await governance.state(proposalId))
     vote = await governance.connect(user2).castVote(proposalId, 2)
-    //vote = await governance.connect(user2).castVote(proposalId, 0)
+
+    vote = await governance.connect(user2).castVote(proposalId, 0)
+
     vote = await governance.connect(user3).castVote(proposalId, 1)
     vote = await governance.connect(user4).castVote(proposalId, 1)
     vote = await governance.connect(user5).castVote(proposalId, 0)
-    console.log(await governance.state(proposalId))
-
-    //vote = await governance.connect(user2).castVote(proposalId, 0)
 
     // created for moves forward one block after the voting
     const transfer = await token.transfer(proposer.address, 80)
@@ -234,15 +255,15 @@ describe("Override vote", function () {
 
     const { againstVotes, forVotes, abstainVotes } = await governance.proposalVotes(proposalId)
 
-    expect(againstVotes.toString()).to.eq(amountToTransfer.mul(2))
-    expect(forVotes.toString()).to.eq(amountToTransfer.mul(3))
+    expect(againstVotes.toString()).to.eq(fiftyTokens.mul(3))
+    expect(forVotes.toString()).to.eq(fiftyTokens.mul(2))
     expect(abstainVotes.toString()).to.eq("0")
   })
 });
 
 describe("Undelegates", function () {
   let governance, token, contract // contracts
-  let executor, proposer, user1, user2, user3, user4, user5 // accounts
+  let executor, proposer, user1, user2, user3 // accounts
 
   let propose
 
@@ -253,24 +274,21 @@ describe("Undelegates", function () {
   let vote
   let proposalId
 
-  let amountToTransfer
+  let fiftyTokens
 
   beforeEach(async () => {
-    [executor, proposer, user1, user2, user3, user4, user5] = await ethers.getSigners()
+    [executor, proposer, user1, user2, user3] = await ethers.getSigners()
 
-    const hundredTokens = ethers.utils.parseEther("1000");
-    amountToTransfer = ethers.utils.parseEther("50");
+    const thousandTokens = ethers.utils.parseEther("1000");
+    fiftyTokens = ethers.utils.parseEther("50");
 
     const Token = await ethers.getContractFactory("AragonERC20Token", executor)
-    token = await Token.deploy(hundredTokens)
+    token = await Token.deploy(thousandTokens)
     await token.deployed()
 
-    await token.transfer(user1.address, amountToTransfer)
-    await token.transfer(user2.address, amountToTransfer)
-    await token.transfer(user3.address, amountToTransfer)
-    await token.transfer(user4.address, amountToTransfer)
-    await token.transfer(user5.address, amountToTransfer)
-
+    await token.transfer(user1.address, fiftyTokens)
+    await token.transfer(user2.address, fiftyTokens)
+    await token.transfer(user3.address, fiftyTokens)
 
     const user1Delegate = await token.connect(user1).delegate(user2.address)
     await user1Delegate.wait()

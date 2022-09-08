@@ -70,6 +70,18 @@ abstract contract GovernorCountingSimpleUpdated is Governor {
     }
 
     /**
+     * @dev Returns user's weight of support
+     */
+    function userWeightOfSuport(uint256 proposalId, address account)
+        public
+        view
+        virtual
+        returns (uint256)
+    {
+        return _proposalVotes[proposalId].userVoteWeight[account];
+    }
+
+    /**
      * @dev Accessor to the internal vote counts.
      */
     function proposalVotes(uint256 proposalId)
@@ -152,11 +164,17 @@ abstract contract GovernorCountingSimpleUpdated is Governor {
             proposalvote.userVoteWeight[account] = weight;
 
             if (accountPreviousSupport == uint8(VoteType.Against)) {
-                proposalvote.againstVotes -= accountPreviousWeight;
+                unchecked {
+                    proposalvote.againstVotes -= accountPreviousWeight;
+                }
             } else if (accountPreviousSupport == uint8(VoteType.For)) {
-                proposalvote.againstVotes -= accountPreviousWeight;
+                unchecked {
+                    proposalvote.forVotes -= accountPreviousWeight;
+                }
             } else if (accountPreviousSupport == uint8(VoteType.Abstain)) {
-                proposalvote.againstVotes -= accountPreviousWeight;
+                unchecked {
+                    proposalvote.abstainVotes -= accountPreviousWeight;
+                }
             }
         }
 
