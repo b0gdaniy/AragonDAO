@@ -1,8 +1,6 @@
 const hre = require("hardhat");
 const ethers = hre.ethers
-const govArtifact = require("../artifacts/contracts/AragonDAO.sol/AragonDAO.json")
 const tokenArtifact = require("../artifacts/contracts/VoteToken.sol/AragonToken.json")
-const contractArtifact = require("../artifacts/contracts/Contract.sol/Contract.json")
 
 const description = "Call function from Contract"
 
@@ -13,16 +11,12 @@ async function main() {
 		tokenArtifact.abi,
 		executor
 	)
-	const governance = new ethers.Contract(
-		"0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9",
-		govArtifact.abi,
-		executor
-	)
-	const contract = new ethers.Contract(
-		"0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
-		contractArtifact.abi,
-		executor
-	)
+
+	await token.transfer(user1.address, fiftyTokens)
+	await token.transfer(user2.address, fiftyTokens)
+	await token.transfer(user3.address, fiftyTokens)
+	await token.transfer(user4.address, fiftyTokens)
+	await token.transfer(user5.address, fiftyTokens)
 
 	const user1Delegate = await token.connect(user1).delegate(user1.address)
 	await user1Delegate.wait()
@@ -34,20 +28,6 @@ async function main() {
 	await user4Delegate.wait()
 	const user5Delegate = await token.connect(user5).delegate(user5.address)
 	await user5Delegate.wait()
-
-	let ABI = ["function release()"]
-	let iface = new ethers.utils.Interface(ABI)
-	const encodedFuntion = iface.encodeFunctionData("release", [])
-
-	propose = await governance.connect(proposer).propose([contract.address], [0], [encodedFuntion], description)
-
-	const event = await governance.queryFilter("ProposalCreated", propose.blockHash)
-	console.log(event)
-	// governance.filters.ProposalCreated()
-	// const proposeReceipt = await propose.wait()
-	// const event = proposeReceipt.events.find(event => event.event === "ProposalCreated");
-	// [proposalId] = event.args;
-
 }
 
 // We recommend this pattern to be able to use async/await everywhere
