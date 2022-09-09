@@ -1,8 +1,10 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
+let delay = ms => new Promise(res => setTimeout(res, ms))
+
 describe("AragonDAO", function () {
-  let governance, token, contract // contracts
+  let governance, token, timelock, contract // contracts
   let executor, proposer, user1, user2, user3, user4, user5 // accounts
 
   let propose
@@ -23,7 +25,7 @@ describe("AragonDAO", function () {
     fiftyTokens = ethers.utils.parseEther("50");
 
     const Token = await ethers.getContractFactory("AragonERC20Token", executor)
-    token = await Token.deploy(thousandTokens)
+    token = await Token.deploy(thousandTokens, 10, true)
     await token.deployed()
 
     // const Token = await ethers.getContractFactory("AragonToken", executor)
@@ -194,7 +196,7 @@ describe("Override vote", function () {
     fiftyTokens = ethers.utils.parseEther("50");
 
     const Token = await ethers.getContractFactory("AragonERC20Token", executor)
-    token = await Token.deploy(thousandTokens)
+    token = await Token.deploy(thousandTokens, 10, true)
     await token.deployed()
 
     await token.transfer(user1.address, fiftyTokens)
@@ -262,29 +264,33 @@ describe("Override vote", function () {
 });
 
 describe("Undelegates", function () {
-  let governance, token, contract // contracts
-  let executor, proposer, user1, user2, user3 // accounts
-
-  let propose
-
-  let encodedFuntion
-  const description = "Call function from Contract"
-  let hash
-
-  let vote
-  let proposalId
+  let token, timelock// contracts
+  let executor, proposer, user1, user2, user3// accounts
 
   let fiftyTokens
 
+  let timelockDelay = 10
+
+  let timestamp
+
   beforeEach(async () => {
-    [executor, proposer, user1, user2, user3] = await ethers.getSigners()
+    [executor, proposer, user1, user2, user3, user4] = await ethers.getSigners()
 
     const thousandTokens = ethers.utils.parseEther("1000");
     fiftyTokens = ethers.utils.parseEther("50");
 
     const Token = await ethers.getContractFactory("AragonERC20Token", executor)
-    token = await Token.deploy(thousandTokens)
+    token = await Token.deploy(thousandTokens, timelockDelay, true)
     await token.deployed()
+
+    const TimeLock = await ethers.getContractFactory("UndelegateTimelock", executor)
+    timelock = await TimeLock.deploy(true, timelockDelay)
+    await timelock.deployed();
+
+    timestamp = 1662684302 + 100;
+
+    const queued = await timelock.queue(token.address, 0, "autoUndelegate()", 0x00, timestamp)
+    await queued.wait()
 
     await token.transfer(user1.address, fiftyTokens)
     await token.transfer(user2.address, fiftyTokens)
@@ -302,6 +308,23 @@ describe("Undelegates", function () {
     expect(await token.delegates(user1.address)).to.eq(user2.address)
     expect(await token.delegates(user2.address)).to.eq(user2.address)
     expect(await token.delegates(user3.address)).to.eq(user2.address)
+  })
+
+  it("send correct indexes", async () => {
+    expect(await token.indexOf(user1.address)).to.eq(0)
+    expect(await token.indexOf(user2.address)).to.eq(1)
+    expect(await token.indexOf(user3.address)).to.eq(2)
+  })
+
+  it("correct added to delegators", async () => {
+    const user1Index = await token.indexOf(user1.address)
+    const user2Index = await token.indexOf(user2.address)
+    const user3Index = await token.indexOf(user3.address)
+
+
+    expect(await token.delegators(user1Index)).to.eq(user1.address)
+    expect(await token.delegators(user2Index)).to.eq(user2.address)
+    expect(await token.delegators(user3Index)).to.eq(user3.address)
   })
 
   it("undelegates", async () => {
