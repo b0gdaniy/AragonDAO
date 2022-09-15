@@ -6,7 +6,11 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/r0ugeEngine/AragonDAO.git"
+  },
+  "author": "Bohdan Pukhno",
   "license": "ISC",
   "dependencies": {
     "@openzeppelin/contracts": "^4.7.3",
